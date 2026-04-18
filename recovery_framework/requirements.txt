@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+websockets
+watchdog
+pyjwt
+pydantic_settings\
+
+
+#source /home/tiimothy/venv/bin/activate
+#uvicorn app.main:app --reload
+#python3 -m agent.main

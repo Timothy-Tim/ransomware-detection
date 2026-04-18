@@ -1,0 +1,5 @@
+{
+  "agent_id": "...",
+  "hostname": "...",
+  "allowed_paths": ["/home", "/var/www"]
+}

@@ -1,0 +1,4 @@
+# Root
+.env
+.env.local
+.env.production
