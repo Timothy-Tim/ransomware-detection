@@ -12,6 +12,7 @@ export default function Dashboard() {
         { to: "/alerts", label: "🚨 Alerts" },
         { to: "/backup", label: "💾 Backup" },
         { to: "/recovery", label: "🔄 Recovery" },
+        { to: "/change-password", label: "🔑 Change Password" },
         ...(localStorage.getItem("role") === "admin" ? [{ to: "/users", label: "👥 Users" }] : [])
     ];
 

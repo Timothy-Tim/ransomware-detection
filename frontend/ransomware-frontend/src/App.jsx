@@ -10,6 +10,9 @@ import Alerts from "./pages/Alerts";
 import Backup from "./pages/Backup";
 import Recovery from "./pages/Recovery";
 import Users from "./pages/Users";
+import Register from "./pages/Register";
+import ChangePassword from "./pages/ChangePassword";
+import SetPassword from "./pages/SetPassword";
 
 export default function App() {
     return (
@@ -18,6 +21,8 @@ export default function App() {
                 <BrowserRouter>
                     <Routes>
                         <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/set-password" element={<SetPassword />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="/" element={<Dashboard />}>
                                 <Route index element={<DashboardHome />} />
@@ -26,6 +31,7 @@ export default function App() {
                                 <Route path="alerts" element={<Alerts />} />
                                 <Route path="backup" element={<Backup />} />
                                 <Route path="recovery" element={<Recovery />} />
+                                <Route path="change-password" element={<ChangePassword />} />
                             </Route>
                         </Route>
                     </Routes>

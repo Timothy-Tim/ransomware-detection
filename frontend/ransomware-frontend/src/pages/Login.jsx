@@ -1,6 +1,7 @@
 import { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export default function Login() {
     const { login } = useContext(AuthContext);
@@ -25,10 +26,21 @@ export default function Login() {
                 return;
             }
 
-            const data = await res.json();
-            login(data.access_token, data.username);
-            localStorage.setItem("role", data.role);  
-            navigate("/");
+           const data = await res.json();
+
+           if (res.ok) {
+           login(data.access_token, data.username);
+           localStorage.setItem("role", data.role);
+
+         // Redirect to change password if forced reset
+        if (data.force_password_reset) {
+          navigate("/change-password");
+        } else {
+          navigate("/");
+        }
+        } else {
+          setError(data.detail || "Invalid username or password");
+        }
         } catch (err) {
           console.error("[Login] Error:", err);
           setError("Server error, please try again");
@@ -61,6 +73,9 @@ export default function Login() {
                     </div>
                     <button type="submit">Login</button>
                 </form>
+                <p style={{ textAlign: "center", marginTop: "1rem", color: "#888", fontSize: "0.9rem" }}>
+                    New company? <Link to="/register">Register here</Link>
+                </p>
             </div>
         </div>
     );

@@ -12,28 +12,22 @@ export default function DashboardHome() {
     useEffect(() => {
     const headers = { Authorization: `Bearer ${token}` };
 
-    const fetchData = () => {
-        fetch("http://localhost:8000/api/v1/monitor/agents", { headers })
-            .then(r => r.json())
-            .then(data => setAgentConnected(data.length > 0))
-            .catch(() => setAgentConnected(false));
+    fetch("http://localhost:8000/api/v1/monitor/agents", { headers })
+        .then(r => r.json())
+        .then(data => setAgentConnected(Array.isArray(data) && data.length > 0))
+        .catch(() => setAgentConnected(false));
 
-        fetch("http://localhost:8000/api/v1/alerts/", { headers })
-            .then(r => r.json())
-            .then(setAlerts)
-            .catch(() => {});
+    fetch("http://localhost:8000/api/v1/alerts/", { headers })
+        .then(r => r.json())
+        .then(data => setAlerts(Array.isArray(data) ? data : []))  // ✅ guard
+        .catch(() => setAlerts([]));
 
-        fetch("http://localhost:8000/api/v1/recovery/tasks", { headers })
-            .then(r => r.json())
-            .then(setRecoveryTasks)
-            .catch(() => {});
-    };
+    fetch("http://localhost:8000/api/v1/recovery/tasks", { headers })
+        .then(r => r.json())
+        .then(data => setRecoveryTasks(Array.isArray(data) ? data : []))  // ✅ guard
+        .catch(() => setRecoveryTasks([]));
 
-    fetchData();
-    // ✅ Refresh every 10 seconds
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
-    }, [token]);
+}, [token]);;
 
     const recentEvents = events.slice(-5).reverse();
 
