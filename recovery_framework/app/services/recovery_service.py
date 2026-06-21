@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from app.services.backup_service import restore_file
+from app.services.s3_backup import restore_latest_backup
 
 
 async def restore_files(task: dict):
@@ -9,7 +9,7 @@ async def restore_files(task: dict):
     Tracks both recovered and failed files on the task dict.
     """
     for file in task.get("infected_files", []):
-        success = await asyncio.to_thread(restore_file, file)
+        success = await asyncio.to_thread(restore_latest_backup, file)
         if success:
             task.setdefault("recovered_files", []).append(file)
         else:

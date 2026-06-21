@@ -3,6 +3,7 @@ from agent.identity import get_or_create_identity
 import os
 import math
 import time
+import shutil
 from collections import defaultdict
 
 KNOWN_RANSOMWARE_EXTENSIONS = [".locky", ".crypt", ".crypted", ".enc", ".infected"]
@@ -10,6 +11,37 @@ ENTROPY_THRESHOLD = 7.5
 MODIFICATION_TRACKER = defaultdict(list)
 MODIFICATION_THRESHOLD = 10
 TIME_WINDOW = 5
+
+# Quarantine folder — sits next to the watch folder
+QUARANTINE_DIR = os.path.join(os.path.expanduser("~"), "quarantine")
+
+
+def ensure_quarantine_dir():
+    """Create quarantine folder if it doesn't exist."""
+    os.makedirs(QUARANTINE_DIR, exist_ok=True)
+
+
+def quarantine_file(file_path: str) -> str | None:
+    """
+    Move infected file to quarantine folder.
+    Returns the quarantine path on success, None on failure.
+    """
+    try:
+        ensure_quarantine_dir()
+        filename = os.path.basename(file_path)
+
+        # Avoid overwriting existing quarantined files with same name
+        timestamp = int(time.time())
+        quarantine_name = f"{timestamp}_{filename}"
+        quarantine_path = os.path.join(QUARANTINE_DIR, quarantine_name)
+
+        shutil.move(file_path, quarantine_path)
+        print(f"[Quarantine] Moved {file_path} → {quarantine_path}")
+        return quarantine_path
+
+    except Exception as e:
+        print(f"[Quarantine] Failed to quarantine {file_path}: {e}")
+        return None
 
 
 def calculate_entropy(file_path: str) -> float:
@@ -30,6 +62,7 @@ def calculate_entropy(file_path: str) -> float:
         return entropy
     except Exception:
         return 0.0
+
 
 def analyze_file(file_path: str) -> dict:
     if not os.path.isfile(file_path):
@@ -60,39 +93,43 @@ def analyze_file(file_path: str) -> dict:
 
 async def analyze_and_queue(file_path: str):
     result = analyze_file(file_path)
-    
-    #  Always derive original path
+
     root, ext = os.path.splitext(file_path)
     original_path = root if os.path.splitext(root)[1] else file_path
-    infected_files: set[str] = set()
+
+    identity = get_or_create_identity()
+    host = identity.get("hostname") or identity.get("agent_id")
 
     if result["infected"]:
-        identity = get_or_create_identity()
-        host = identity.get("hostname") or identity.get("agent_id")
-
         print(f"[Detection] Ransomware detected: {file_path} — {result['reason']}")
-        
-        infected_files.add(file_path)
 
-        # Send correct event format to backend
+        # ── QUARANTINE the infected file ──
+        quarantine_path = quarantine_file(file_path)
+
+        if quarantine_path:
+            print(f"[Detection] File quarantined successfully.")
+            quarantine_status = "quarantined"
+        else:
+            print(f"[Detection] Quarantine failed — file left in place.")
+            quarantine_status = "quarantine_failed"
+
+        # Send event to backend with quarantine info
         await event_queue.put({
             "type": "ransomware_detected",
             "host": host,
             "file": file_path,
+            "original_path": original_path,
+            "quarantine_path": quarantine_path,
+            "quarantine_status": quarantine_status,
             "reason": result["reason"],
             "timestamp": time.time()
         })
 
-        # infected_files.add(file_path)
-        # # Disabled during testing — too aggressive, kills all processes
-        # #stop_processes(allowed=["python"])
-        # delete_infected([file_path])
-        # restore_files([file_path])
     else:
-        # Also send clean events so monitor page shows activity
+        # Send clean event so monitor page shows activity
         await event_queue.put({
-            "type": "ransomware_detected",
-            "host": host, # type: ignore
+            "type": "file_scanned",
+            "host": host,
             "file": original_path,
             "reason": result["reason"],
             "timestamp": time.time(),

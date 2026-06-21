@@ -1,4 +1,8 @@
 {
   "/home/tiimothy/documents/test.txt": "test.txt/test.txt_20260409T233545",
-  "/home/tiimothy/documents/important.txt": "important.txt/important.txt_20260410T122309"
+  "/home/tiimothy/documents/important.txt": "important.txt/important.txt_20260410T122309",
+  "/home/tiimothy/watch_folder/testfile.txt~": "testfile.txt~/testfile.txt~_20260602T132515",
+  "/home/tiimothy/watch_folder/doc.txt": "doc.txt/doc.txt_20260602T132506",
+  "/home/tiimothy/watch_folder/finance.csv": "finance.csv/finance.csv_20260602T132514",
+  "/home/tiimothy/watch_folder/notes.txt": "notes.txt/notes.txt_20260602T132514"
 }

@@ -31,7 +31,7 @@ export default function App() {
                                 <Route path="alerts" element={<Alerts />} />
                                 <Route path="backup" element={<Backup />} />
                                 <Route path="recovery" element={<Recovery />} />
-                                <Route path="change-password" element={<ChangePassword />} />
+                                <Route path="settings" element={<ChangePassword />} />
                             </Route>
                         </Route>
                     </Routes>

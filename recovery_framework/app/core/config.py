@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     def build_database_url(self):
         if not self.DATABASE_URL:
             self.DATABASE_URL = (
-                f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}"
+                f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASSWORD}"
                 f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
             )
         return self

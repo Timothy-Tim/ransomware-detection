@@ -12,6 +12,12 @@ export async function apiRequest(endpoint, options = {}) {
         },
     });
 
+    if (res.status === 401) {
+    localStorage.removeItem("access_token");
+    window.location.href = "/login";  // or "/" depending on your route
+    return
+}
+
     if (!res.ok) {
         throw new Error("API request failed");
     }

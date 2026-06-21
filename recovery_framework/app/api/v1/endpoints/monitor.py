@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, Query
 from app.services.alert_service import create_alert
 from app.core.security import decode_token
 from app.api.v1.endpoints.auth import get_current_user
+from app.services.auto_recovery import start_auto_recovery
+from app.db.session import SessionLocal
+from app.models.recovery import RecoveryTask
 from typing import Optional
+import json
 
 router = APIRouter()
 
@@ -44,12 +48,33 @@ async def agent_websocket(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
             print(f"[{host}] {data}")
+
             if data.get("type") == "ransomware_detected":
+
+                # 1. Create alert in DB
                 create_alert(
                     host=host,
                     file=data.get("file", ""),
                     reason=data.get("reason", "")
                 )
+
+                # 2. Create or update recovery task
+                recovery_task = _get_or_create_recovery_task(
+                    host=host,
+                    file=data.get("file", ""),
+                    reason=data.get("reason", "")
+                )
+
+                # 3. Schedule auto-recovery
+                # Wrap _notify_frontend so auto_recovery can call it with just data
+                async def broadcast(msg: dict):
+                    await _notify_frontend(host, msg)
+
+                if recovery_task:
+                    start_auto_recovery(recovery_task.id, broadcast)
+                    print(f"[AutoRecovery] Scheduled for task {recovery_task.id} on host {host}")
+
+            # Always forward event to frontend dashboard
             await _notify_frontend(host, data)
 
     except WebSocketDisconnect:
@@ -108,7 +133,6 @@ async def frontend_websocket(
 
 
 async def _notify_frontend(host: str, data: dict) -> None:
-    # ✅ Notify specific host listeners AND "all" listeners
     targets = list(frontend_listeners.get(host, []))
     for ws in frontend_listeners.get("all", []):
         if ws not in targets:
@@ -120,7 +144,6 @@ async def _notify_frontend(host: str, data: dict) -> None:
     for ws in targets:
         try:
             await ws.send_json(data)
-            print(f"[DEBUG _notify] sent successfully")
         except Exception as e:
             print(f"[DEBUG _notify] failed: {e}")
             dead.append(ws)
@@ -144,3 +167,48 @@ async def send_command(host: str, command: dict) -> bool:
     else:
         print(f"[Command] Host {host} not connected")
     return False
+
+
+def _get_or_create_recovery_task(host: str, file: str, reason: str):
+    """
+    Find an existing pending recovery task for this host,
+    add the file to it, or create a new one if none exists.
+    Batches up to 100 files per task (matching your original logic).
+    """
+    db = SessionLocal()
+    try:
+        # Look for an existing pending task for this host
+        existing = db.query(RecoveryTask).filter(
+            RecoveryTask.host == host,
+            RecoveryTask.status == "pending"
+        ).first()
+
+        if existing:
+            # Add file to existing task if not already there
+            files = existing.files or []
+            if file and file not in files:
+                files.append(file)
+                existing.files = files
+                db.commit()
+                db.refresh(existing)
+            return existing
+        else:
+            # Create a new recovery task
+            new_task = RecoveryTask(
+                host=host,
+                files=[file] if file else [],
+                malware=reason,
+                status="pending"
+            )
+            db.add(new_task)
+            db.commit()
+            db.refresh(new_task)
+            return new_task
+
+    except Exception as e:
+        print(f"[Monitor] Failed to create recovery task: {e}")
+        db.rollback()
+        return None
+    finally:
+        db.close()
+        

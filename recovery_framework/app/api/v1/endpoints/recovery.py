@@ -4,6 +4,7 @@ from app.models.alert import Alert
 from app.models.recovery import RecoveryTask
 from app.api.v1.endpoints.monitor import send_command, connected_clients
 from app.api.v1.endpoints.auth import get_current_user
+from app.services.auto_recovery import cancel_auto_recovery, is_pending
 
 router = APIRouter()
 
@@ -63,3 +64,13 @@ async def start_recovery(id: int, current_user=Depends(get_current_user)):
         return {"error": "Failed to send command"}
     finally:
         db.close()
+        
+    
+@router.post("/{task_id}/cancel-auto")
+def cancel_auto(task_id: int, current_user=Depends(get_current_user)):
+    cancelled = cancel_auto_recovery(task_id)
+    return {"cancelled": cancelled, "task_id": task_id}
+
+@router.get("/{task_id}/pending")
+def check_pending(task_id: int, current_user=Depends(get_current_user)):
+    return {"pending": is_pending(task_id)}    
